@@ -1,0 +1,13 @@
+# Core Testing & Linting
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+black==23.12.0
+flake8==6.1.0
+pylint==3.0.3
+ansible-lint==6.22.0
+
+# Common utilities
+pyyaml==6.0.1
+python-dotenv==1.0.0
+requests==2.31.0
