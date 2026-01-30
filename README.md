@@ -57,11 +57,11 @@ A real-time service monitoring system that tracks httpd, rabbitmq, and postgresq
 - Comprehensive test suite with 12+ tests
 - JSON status file generation
 
-**Documentation:** See `TEST1/README.md`
+**Documentation:** See `test1-monitor-and-webservice/README.md`
 
 **Quick Start:**
 ```bash
-cd TEST1
+cd test1-monitor-and-webservice
 docker compose build
 docker compose up -d
 chmod +x run_all_tests.sh
@@ -81,11 +81,11 @@ Ansible automation for managing three Linux servers (host1, host2, host3) runnin
 - Inventory-based host management
 - Multiple playbook actions: verify_install, check-disk, check-status
 
-**Documentation:** See `TEST2/README.md`
+**Documentation:** See `test2-ansible-orchestration/README.md`
 
 **Quick Start:**
 ```bash
-cd TEST2
+cd test2-ansible-orchestration
 ansible --version
 ansible-playbook assignment.yml -e action=verify_install
 ```
@@ -103,11 +103,11 @@ Python data analysis tool for filtering properties sold below average price per 
 - Filtered results export
 - Virtual environment setup included
 
-**Documentation:** See `TEST3/README.md`
+**Documentation:** See `test3-data-analysis/README.md`
 
 **Quick Start:**
 ```bash
-cd TEST3
+cd test3-data-analysis
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
