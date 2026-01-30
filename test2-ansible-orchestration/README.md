@@ -122,6 +122,12 @@ service_rest_base_url: "http://localhost:5001"
 
 ## Troubleshooting
 
+**Package lock error during verify_install:**
+- If you get a package lock error, run with sudo:
+```bash
+sudo ansible-playbook assignment.yml -e action=verify_install
+```
+
 **Disk check not sending email:**
 - Verify SMTP credentials are correct
 - Ensure disk usage is actually > 80%
