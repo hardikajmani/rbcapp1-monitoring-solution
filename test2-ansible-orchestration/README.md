@@ -14,6 +14,45 @@ Ansible playbook for monitoring rbcapp1 application across 3 RHEL servers.
 - **host2** (group: rabbitmq) → runs `rabbitmq-server` message queue
 - **host3** (group: postgresql) → runs `postgresql` database
 
+
+## Ansible Installation
+
+### Step 1: Install Ansible
+
+**On Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install ansible -y
+```
+
+**On RHEL/CentOS:**
+```bash
+sudo yum install ansible -y
+```
+
+**Verify installation:**
+```bash
+ansible --version
+
+# Expected output:
+# ansible [core 2.13.0]
+#   config file = /etc/ansible/ansible.cfg
+#   configured module search path = ['/home/user/.ansible/plugins/modules']
+#   ansible python module location = /usr/lib/python3/dist-packages/ansible
+#   executable location = /usr/bin/ansible
+#   python version = 3.9.2
+```
+
+### Step 2: Install Required Collections
+
+**Install a specific collection:**
+```bash
+ansible-galaxy collection install community.general
+```
+
+
+
+
 ## Three Actions
 
 ### 1. `action=verify_install`
@@ -55,7 +94,22 @@ ansible-playbook assignment.yml -e action=check-status
 
 ### Setup
 
-1. Update `inventory` with your actual host IPs:
+1. Update local hosts
+```bash
+sudo nano /etc/hosts
+```
+Add lines like:
+```ini
+127.0.0.1   localhost
+127.0.0.1   host1
+127.0.0.1   host2
+127.0.0.1   host3
+127.0.0.1   app-servers
+```
+
+Then save and exit.
+
+2. [OPTIONAL] Update `inventory` with your actual host IPs:
 
 ```ini
 [httpd]
@@ -115,9 +169,8 @@ service_rest_base_url: "http://localhost:5001"
 
  **Per-host service targeting** - Each host handles only its service (httpd on host1, etc.)  
  **Block-based conditionals** - Single `when: action == ...` per action block  
- **Production-ready** - Uses real rpm checks, yum install, and systemctl  
  **Email alerts** - Automatically sends disk usage warnings  
- **REST API integration** - Monitors application health status  
+ **REST API integration** - Monitors application health status  (Given Docker for Test1 is running)\
  **Handlers** - Automatically starts and enables services after install  
 
 ## Troubleshooting
