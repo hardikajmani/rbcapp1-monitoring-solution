@@ -1,0 +1,172 @@
+---
+# assignment.yml - TEST2: rbcapp1 Monitoring Solution
+# 
+# Usage:
+#   ansible-playbook assignment.yml -e action=verify_install
+#   ansible-playbook assignment.yml -e action=check-disk
+#   ansible-playbook assignment.yml -e action=check-status
+
+- name: rbcapp1 Monitoring Solution
+  hosts: app-servers
+  vars:
+    email_to: "hardikajmani.public@gmail.com"
+    email_from: "gunnuhoneywedding2@gmail.com"
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    smtp_username: "gunnuhoneywedding2@gmail.com"
+    smtp_password: "dgglxxuijtscqlmn"
+    service_rest_base_url: "http://localhost:5001"
+    apache_pkg: "{{ 'httpd' if ansible_facts.os_family == 'RedHat' else 'apache2' }}"
+    apache_svc: "{{ 'httpd' if ansible_facts.os_family == 'RedHat' else 'apache2' }}"
+  
+  handlers:
+    - name: Start httpd
+      ansible.builtin.service:
+        name: "{{ apache_svc }}"
+        state: started
+        enabled: yes
+
+  tasks:
+    # ========================================================================
+    # ACTION 1: verify_install - Verify and install services on correct hosts
+    # ========================================================================
+    - name: verify_install block
+      when: action == "verify_install"
+      block:
+        - name: "Check if httpd is installed"
+          when: "'httpd' in group_names"
+          ansible.builtin.command: rpm -q httpd
+          register: httpd_rpm_check
+          ignore_errors: true
+          changed_when: false
+
+        - name: "Install httpd if not installed"
+          when: "'httpd' in group_names"
+          when: httpd_rpm_check is failed
+          ansible.builtin.package:
+            name: "{{ apache_pkg }}"
+            state: present
+          notify: Start apache
+
+        - name: "RabbitMQ pattern on host2"
+          when: "'rabbitmq' in group_names"
+          ansible.builtin.debug:
+            msg: |
+              On host2 (rabbitmq server):
+              - Check: rpm -q rabbitmq-server
+              - If missing: yum install rabbitmq-server
+              - Start and enable: systemctl start rabbitmq-server && systemctl enable rabbitmq-server
+
+        - name: "PostgreSQL pattern on host3"
+          when: "'postgresql' in group_names"
+          ansible.builtin.debug:
+            msg: |
+              On host3 (postgresql server):
+              - Check: rpm -q postgresql-server
+              - If missing: yum install postgresql-server
+              - Initialize: /usr/pgsql-*/bin/postgresql-setup --initdb
+              - Start and enable: systemctl start postgresql && systemctl enable postgresql
+
+    # ========================================================================
+    # ACTION 2: check-disk - Monitor disk usage and alert if > 80%
+    # ========================================================================
+    - name: check-disk block
+      when: action == "check-disk"
+      block:
+        - name: "Get disk usage of /"
+          ansible.builtin.command: df -h /
+          register: df_output
+          changed_when: false
+
+        - name: "Parse disk usage percentage"
+          ansible.builtin.set_fact:
+            disk_usage_percent: "{{ df_output.stdout_lines[1].split()[4][:-1] | int }}"
+
+        - name: "Send email alert if usage > 80%"
+          when: disk_usage_percent > 80
+          ansible.builtin.mail:
+            host: "{{ smtp_host }}"
+            port: "{{ smtp_port }}"
+            username: "{{ smtp_username }}"
+            password: "{{ smtp_password }}"
+            from: "{{ email_from }}"
+            to: "{{ email_to }}"
+            subject: "❗ Disk usage alert on {{ inventory_hostname }}"
+            body: |
+              ALERT: High disk usage on {{ inventory_hostname }}
+              
+              Partition: /
+              Usage: {{ df_output.stdout_lines[1].split()[4] }}
+              Available: {{ df_output.stdout_lines[1].split()[3] }}
+              
+              Please take action to free up space.
+          delegate_to: localhost
+          run_once: yes
+
+        - name: "Report disk usage"
+          ansible.builtin.debug:
+            msg: |
+              Disk usage on {{ inventory_hostname }}:
+              Root (/): {{ df_output.stdout_lines[1].split()[4] }}
+              Available: {{ df_output.stdout_lines[1].split()[3] }}
+
+    # ========================================================================
+    # ACTION 3: check-status - Query rbcapp1 REST API for overall status
+    # ========================================================================
+    - name: check-status block
+      when: action == "check-status"
+      block:
+        - name: "Query /healthcheck REST API"
+          ansible.builtin.uri:
+            url: "{{ service_rest_base_url }}/healthcheck"
+            method: GET
+            return_content: yes
+            status_code: [200]
+          register: rest_healthcheck
+          ignore_errors: true
+          run_once: yes
+          delegate_to: localhost
+
+        - name: "Parse JSON response"
+          when: rest_healthcheck.status == 200
+          ansible.builtin.set_fact:
+            health_data: "{{ rest_healthcheck.content | from_json }}"
+          failed_when: false
+
+        - name: "Report rbcapp1 is UP"
+          when: rest_healthcheck.status == 200
+          when: health_data is defined
+          when: health_data.services is defined
+          when: health_data.services | dict2items | selectattr('value.status', '==', 'UP') | list | length == 3
+          ansible.builtin.debug:
+            msg: |
+              ✅ rbcapp1 STATUS: UP
+              
+              All services are running:
+              {%- for item in health_data.services | dict2items %}
+                - {{ item.key }}: {{ item.value.status }}
+              {%- endfor %}
+
+        - name: "Report rbcapp1 is DOWN"
+          when: rest_healthcheck.status == 200
+          when: health_data is defined
+          when: health_data.services is defined
+          when: health_data.services | dict2items | selectattr('value.status', '==', 'DOWN') | list | length > 0
+          ansible.builtin.debug:
+            msg: |
+              ⚠️  rbcapp1 STATUS: DOWN
+              
+              Service status:
+              {%- for item in health_data.services | dict2items %}
+                - {{ item.key }}: {{ item.value.status }}
+              {%- endfor %}
+
+        - name: "Report rbcapp1 is UNREACHABLE"
+          when: rest_healthcheck.status != 200 or rest_healthcheck is failed
+          ansible.builtin.debug:
+            msg: |
+              ❌ rbcapp1 STATUS: UNREACHABLE
+              
+              Unable to reach: {{ service_rest_base_url }}/healthcheck
+              Status: {{ rest_healthcheck.status | default('Connection failed') }}
+              Error: {{ rest_healthcheck.msg | default('Unknown error') }}
