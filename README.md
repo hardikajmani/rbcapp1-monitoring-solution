@@ -226,11 +226,7 @@ The three tests work together to provide:
 
 ## Support and Troubleshooting
 
-For issues specific to each test, refer to the troubleshooting section in the respective README:
-
-- TEST1 troubleshooting: `TEST1/README.md#troubleshooting`
-- TEST2 troubleshooting: `TEST2/README.md#troubleshooting`
-- TEST3 troubleshooting: `TEST3/README.md#troubleshooting`
+For issues specific to each test, refer to the troubleshooting section in the respective README
 
 ---
 
