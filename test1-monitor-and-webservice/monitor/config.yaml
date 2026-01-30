@@ -1,0 +1,7 @@
+# rbcapp1 Monitor Configuration
+output_dir: /var/tmp/rbcapp1-status
+check_interval: 30
+hostname: host1
+elasticsearch:
+  host: localhost:9200
+  index: rbcapp1-status

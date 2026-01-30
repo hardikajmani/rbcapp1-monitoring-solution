@@ -1,0 +1,67 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: rbcapp1-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - rbcapp1-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  monitor:
+    build:
+      context: ./monitor
+      dockerfile: Dockerfile
+    container_name: rbcapp1-monitor
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./monitor:/app/monitor
+      - ./status-files:/var/tmp/rbcapp1-status
+    networks:
+      - rbcapp1-network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: rbcapp1-api
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "5001:5000"
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - FLASK_ENV=development
+      - API_HOST=0.0.0.0
+      - API_PORT=5000
+    volumes:
+      - ./api:/app/api
+      - ./config:/app/config
+    networks:
+      - rbcapp1-network
+    restart: unless-stopped
+
+volumes:
+  elasticsearch_data:
+    driver: local
+
+networks:
+  rbcapp1-network:
+    driver: bridge
