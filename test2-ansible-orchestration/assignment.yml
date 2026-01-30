@@ -16,11 +16,13 @@
     smtp_username: "gunnuhoneywedding2@gmail.com"
     smtp_password: "dgglxxuijtscqlmn"
     service_rest_base_url: "http://localhost:5001"
+    apache_pkg: "{{ 'httpd' if ansible_facts.os_family == 'RedHat' else 'apache2' }}"
+    apache_svc: "{{ 'httpd' if ansible_facts.os_family == 'RedHat' else 'apache2' }}"
   
   handlers:
     - name: Start httpd
-      ansible.builtin.systemd:
-        name: httpd
+      ansible.builtin.service:
+        name: "{{ apache_svc }}"
         state: started
         enabled: yes
 
@@ -41,10 +43,10 @@
         - name: "Install httpd if not installed"
           when: "'httpd' in group_names"
           when: httpd_rpm_check is failed
-          ansible.builtin.yum:
-            name: httpd
+          ansible.builtin.package:
+            name: "{{ apache_pkg }}"
             state: present
-          notify: Start and enable httpd
+          notify: Start apache
 
         - name: "RabbitMQ pattern on host2"
           when: "'rabbitmq' in group_names"
